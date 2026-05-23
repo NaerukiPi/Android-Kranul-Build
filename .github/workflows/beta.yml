@@ -124,7 +124,6 @@ jobs:
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
-          # Override URL toolchain jika input diberikan
           if [ -n "${{ env.TOOLCHAIN_URL_OVERRIDE }}" ]; then
             toolchains=$(echo "$toolchains" | jq --arg url "${{ env.TOOLCHAIN_URL_OVERRIDE }}" '.[0].url = $url')
           fi
@@ -133,10 +132,8 @@ jobs:
           echo "There is $toolchains_num defined toolchains."
           for ((i=0;i<toolchains_num;i++)); do
             toolchain_name=$(echo $toolchains | jq -r ".[$i].name")
-            # Github
             toolchain_repo=$(echo $toolchains | jq -r ".[$i].repo")
             toolchain_branch=$(echo $toolchains | jq -r ".[$i].branch")
-            # From archive
             toolchain_url=$(echo $toolchains | jq -r ".[$i].url")
             
             echo $toolchain_url
@@ -255,6 +252,8 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
+          # Hapus flag Clang yang bermasalah
+          export KCFLAGS="${KCFLAGS//-ftrivial-auto-var-init=zero/}"
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
           export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
@@ -265,6 +264,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
+          export KCFLAGS="${KCFLAGS//-ftrivial-auto-var-init=zero/}"
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
           export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
