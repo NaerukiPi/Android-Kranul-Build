@@ -247,33 +247,22 @@ jobs:
             esac
           fi
 
-      - name: "Make defconfig with ARM64 GCC"
-        working-directory: ${{ env.KERNEL_NAME }}
-        run: |
-          make O=${{ env.OUT_DIR }} ARCH=arm64 \
-               CROSS_COMPILE=aarch64-linux-gnu- \
-               HOSTCC=/usr/bin/gcc \
-               -j$(nproc) ${{ env.DEFCONFIG_NAME }}
-
-      - name: "Build kernel (scripts with GCC, kernel with Clang)"
+      - name: "Make defconfig"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
+          echo "PATH Variable: $PATH"
+          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
-          # 1. Bangun semua host tools dengan GCC ARM64 (agar terhindar error regalloc)
-          echo "Building scripts with GCC..."
-          make O=${{ env.OUT_DIR }} ARCH=arm64 \
-               CROSS_COMPILE=aarch64-linux-gnu- \
-               CC=/usr/bin/aarch64-linux-gnu-gcc \
-               HOSTCC=/usr/bin/gcc \
-               CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-               CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-               -j$(nproc) scripts
-
-          # 2. Lanjutkan build kernel penuh dengan Clang (args sudah berisi CC=clang)
-          echo "Building kernel with Clang..."
+      - name: "Build kernel"
+        working-directory: ${{ env.KERNEL_NAME }}
+        env:
+          args: ${{ steps.generate-args.outputs.args }}
+        run: |
+          export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
+          echo "PATH Variable: $PATH"
           make ${{ env.args }}
 
       - name: "Upload Image"
