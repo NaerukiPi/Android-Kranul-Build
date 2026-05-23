@@ -24,11 +24,19 @@
        "ARCH": "arm64",
        "CC": "clang",
     "externalCommand": {
-       "CLANG_TRIPLE": "aarch64-linux-gnu-",
-       "CROSS_COMPILE": "aarch64-linux-gnu-",
-       "CROSS_COMPILE_COMPAT": "arm-linux-gnueabi-",
-       "CROSS_COMPILE_ARM32": "arm-linux-gnueabi-"
-   }
+  "CLANG_TRIPLE": "aarch64-linux-gnu-",
+  "CROSS_COMPILE": "aarch64-linux-gnu-",
+  "CROSS_COMPILE_COMPAT": "arm-linux-gnueabi-",
+  "CROSS_COMPILE_ARM32": "arm-linux-gnueabi-",
+  "LD": "ld.lld",
+  "AR": "llvm-ar",
+  "NM": "llvm-nm",
+  "OBJCOPY": "llvm-objcopy",
+  "OBJDUMP": "llvm-objdump",
+  "READELF": "llvm-readelf",
+  "OBJSIZE": "llvm-size",
+  "STRIP": "llvm-strip"
+    }
  },
     "AnyKernel3": {
       "use": true,
