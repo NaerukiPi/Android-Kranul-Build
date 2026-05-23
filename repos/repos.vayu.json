@@ -21,13 +21,13 @@
       }
     ],
     "params": {
-  "ARCH": "arm64",
-  "CC": "clang",
-  "externalCommand": {
-    "CLANG_TRIPLE": "aarch64-linux-gnu-",
-    "CROSS_COMPILE": "aarch64-linux-gnu-"
-   }
- }
+      "ARCH": "arm64",
+      "CC": "clang",
+      "externalCommand": {
+        "CLANG_TRIPLE": "aarch64-linux-gnu-",
+        "CROSS_COMPILE": "aarch64-linux-gnu-"
+      }
+    },
     "AnyKernel3": {
       "use": true,
       "release": true,
