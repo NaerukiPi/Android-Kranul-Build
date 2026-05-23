@@ -251,7 +251,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          export HOSTCC=gcc HOSTCXX=g++
+          export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
@@ -260,7 +260,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          export HOSTCC=gcc HOSTCXX=g++
+          export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
           echo "PATH Variable: $PATH"
           make ${{ env.args }}
 
