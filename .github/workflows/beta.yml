@@ -69,7 +69,6 @@ jobs:
       withKernelSU: ${{ matrix.repos.kernelSU.withKernelSU }}
       kernelSUFork: ${{ matrix.repos.kernelSU.kernelSUFork }}
       kernelSUCustomUrl: ${{ github.event.inputs.KSU_CUSTOM_URL || matrix.repos.kernelSU.customUrl }}
-
       ccache: ${{ matrix.repos.ccache }}
       useAnykernel: ${{ matrix.repos.AnyKernel3.use }}
       release: ${{ matrix.repos.AnyKernel3.release }}
@@ -113,24 +112,14 @@ jobs:
 
       - name: "Clone kernel source => (${{ env.KERNEL_REPO }})"
         run: |
-          git clone --recursive --depth=100 -j $(nproc) --branch $KERNEL_BRANCH $KERNEL_REPO $KERNEL_NAME
-          echo "Clone kernel source => ($KERNEL_REPO)"
+          git clone --recursive --depth=1 -j $(nproc) --branch $KERNEL_BRANCH $KERNEL_REPO $KERNEL_NAME
 
-      - name: "Generate changelog"
-        working-directory: ${{ env.KERNEL_NAME }}
-        run: |
-          git log --since="2 days ago" --pretty=format:"- %h %s (%an)" > ${{ env.WORKSPACE }}/changelog.txt
-          if [ ! -s ${{ env.WORKSPACE }}/changelog.txt ]; then
-            echo "No changes in the last 2 days." > ${{ env.WORKSPACE }}/changelog.txt
-          fi
-          echo "Changelog:"
-          cat ${{ env.WORKSPACE }}/changelog.txt
+          echo "Clone kernel source => ($KERNEL_REPO)"
 
       - name: "Get toolchains"
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
-          # Override URL toolchain jika input diberikan
           if [ -n "${{ env.TOOLCHAIN_URL_OVERRIDE }}" ]; then
             toolchains=$(echo "$toolchains" | jq --arg url "${{ env.TOOLCHAIN_URL_OVERRIDE }}" '.[0].url = $url')
           fi
@@ -162,12 +151,6 @@ jobs:
                   ;;
                 *.tar.gz)
                   tar zxvf "$filename" -C $toolchain_name
-                  ;;
-                *.tar.xz)
-                  tar xJf "$filename" -C $toolchain_name
-                  ;;
-                *.tar.bz2)
-                  tar xjf "$filename" -C $toolchain_name
                   ;;
                 *.rar)
                   unrar x "$filename" $toolchain_name
@@ -229,8 +212,6 @@ jobs:
 
       - name: "Update KernelSU"
         working-directory: ${{ env.KERNEL_NAME }}
-        env:
-          arch: ${{ steps.generate-args.outputs.ARCH }}
         if: ${{ env.withKernelSU == 'true' }}
         run: |
           if [ -d "./KernelSU" ]; then
@@ -264,17 +245,10 @@ jobs:
             esac
           fi
 
-          echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
-          echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
-          echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
-
-          cat arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
-
       - name: "Make defconfig"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
-          arch: ${{ steps.generate-args.outputs.ARCH }}
         run: |
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
@@ -365,5 +339,4 @@ jobs:
         with:
           tag_name: v${{ env.builddate }}.${{ github.run_number }}
           files: "${{ env.WORKSPACE }}/${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}.zip"
-          body_path: ${{ env.WORKSPACE }}/changelog.txt
-          generate_release_notes: false
+          generate_release_notes: true
