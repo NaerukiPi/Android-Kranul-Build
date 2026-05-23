@@ -247,21 +247,20 @@ jobs:
             esac
           fi
 
-      - name: "Prebuild scripts with GCC (fix regalloc error)"
+      # Langkah awal: buat .config dulu dengan GCC murni agar semua file konfigurasi tersedia
+      - name: "Make defconfig with GCC (to generate .config)"
+        working-directory: ${{ env.KERNEL_NAME }}
+        run: |
+          make O=${{ env.OUT_DIR }} ARCH=arm64 CC=/usr/bin/gcc HOSTCC=/usr/bin/gcc -j$(nproc) ${{ env.DEFCONFIG_NAME }}
+
+      # Sekarang target scripts bisa dibangun karena .config sudah ada
+      - name: "Prebuild scripts with GCC"
         working-directory: ${{ env.KERNEL_NAME }}
         run: |
           echo "Prebuilding scripts with GCC..."
-          make O=${{ env.OUT_DIR }} ARCH=arm64 CC=/usr/bin/gcc -j$(nproc) scripts
+          make O=${{ env.OUT_DIR }} ARCH=arm64 CC=/usr/bin/gcc HOSTCC=/usr/bin/gcc -j$(nproc) scripts
 
-      - name: "Make defconfig"
-        working-directory: ${{ env.KERNEL_NAME }}
-        env:
-          args: ${{ steps.generate-args.outputs.args }}
-        run: |
-          export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
-          echo "PATH Variable: $PATH"
-          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
-
+      # Sekarang build kernel penuh dengan Clang (args sudah berisi CC=clang, dll.)
       - name: "Build kernel"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
