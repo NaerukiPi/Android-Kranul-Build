@@ -1,60 +1,31 @@
-name: "Build kernels beta 3"
-
-on:
-  workflow_dispatch:
-    inputs:
-      use_custom:
-        description: 'Gunakan pengaturan kustom (abaikan repos.json)'
-        required: false
-        default: false
-        type: boolean
-      custom_kernel_repo:
-        description: 'URL repo kernel (jika use_custom=true)'
-        required: false
-        default: ''
-        type: string
-      custom_kernel_branch:
-        description: 'Branch kernel'
-        required: false
-        default: 'main'
-        type: string
-      custom_kernel_device:
-        description: 'Nama device (untuk artifact)'
-        required: false
-        default: 'custom'
-        type: string
-      custom_defconfig:
-        description: 'Nama defconfig (contoh: vendor/device_defconfig)'
-        required: false
-        default: ''
-        type: string
-      custom_ksu_url:
-        description: 'URL custom KernelSU setup.sh (kosongkan untuk default)'
-        required: false
-        default: ''
-        type: string
-      custom_toolchain_url:
-        description: 'URL langsung ke toolchain (zip/tar/tar.gz/rar)'
-        required: false
-        default: ''
-        type: string
-      custom_host_builder:
-        description: 'Host Builder (contoh: MyBuilder)'
-        required: false
-        default: 'Klauz'
-        type: string
-      custom_localversion:
-        description: 'Localversion suffix (contoh: -MyKernel)'
-        required: false
-        default: '-perf'
-        type: string
+name: "Build kernels beta 2"
 
 env:
   OUT_DIR: "${{ github.workspace }}/out"
 
+on:
+  workflow_dispatch:
+    inputs:
+      KERNEL_REPO:
+        description: 'URL repo kernel (kosongkan untuk default dari repos.json)'
+        required: false
+        default: ''
+      KERNEL_BRANCH:
+        description: 'Branch kernel (kosongkan untuk default)'
+        required: false
+        default: ''
+      TOOLCHAIN_URL:
+        description: 'URL toolchain (kosongkan untuk default)'
+        required: false
+        default: ''
+      KSU_CUSTOM_URL:
+        description: 'URL custom KernelSU (kosongkan untuk default)'
+        required: false
+        default: ''
+
 jobs:
   Set-repos:
-    name: "Parse repos.json or custom input"
+    name: "Parse repos.json"
     runs-on: ubuntu-latest
     outputs:
       repos: ${{ steps.generate-matrix.outputs.repos }}
@@ -63,65 +34,12 @@ jobs:
       - name: "Checkout"
         uses: actions/checkout@v5
 
-      - name: "Generate Matrix (from files or custom input)"
+      - name: "Generate Matrix"
         id: generate-matrix
         run: |
-          if [ "${{ github.event.inputs.use_custom }}" == "true" ]; then
-            echo "Menggunakan konfigurasi kustom..."
-            jq -n \
-              --arg repo "${{ github.event.inputs.custom_kernel_repo }}" \
-              --arg branch "${{ github.event.inputs.custom_kernel_branch }}" \
-              --arg device "${{ github.event.inputs.custom_kernel_device }}" \
-              --arg defconfig "${{ github.event.inputs.custom_defconfig }}" \
-              --arg ksu_url "${{ github.event.inputs.custom_ksu_url }}" \
-              --arg tc_url "${{ github.event.inputs.custom_toolchain_url }}" \
-              --arg host "${{ github.event.inputs.custom_host_builder }}" \
-              --arg localver "${{ github.event.inputs.custom_localversion }}" \
-              '{
-                kernelSource: {
-                  name: $device,
-                  repo: $repo,
-                  branch: $branch,
-                  device: $device,
-                  defconfig: $defconfig
-                },
-                kernelSU: {
-                  withKernelSU: true,
-                  customUrl: $ksu_url,
-                  kernelSUFork: ""
-                },
-                ccache: true,
-                AnyKernel3: {
-                  use: true,
-                  release: false,
-                  repo: "https://github.com/YourOrg/AnyKernel3",
-                  branch: "master"
-                },
-                toolchains: if $tc_url != "" then [{
-                  name: "custom_toolchain",
-                  url: $tc_url,
-                  binPath: ["bin"]
-                }] else [] end,
-                params: {
-                  ARCH: "arm64",
-                  CC: "aarch64-linux-gnu-gcc",
-                  externalCommand: {}
-                },
-                buildSettings: {
-                  hostBuilder: $host,
-                  localversion: $localver
-                }
-              }' | jq -s '.' > custom_repos.json
-            echo "repos<<EOF" >> $GITHUB_OUTPUT
-            cat custom_repos.json >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "Menggunakan repos/*.json"
-            echo "repos<<EOF" >> $GITHUB_OUTPUT
-            jq -s '[.[][]]' repos/repos*.json >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-
+          echo "repos<<EOF" >> $GITHUB_OUTPUT
+          jq -s '[.[][]]' repos/repos*.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: "Set builddate"
         id: generate-builddate
         run: echo "builddate=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
@@ -138,25 +56,24 @@ jobs:
         repos: ${{ fromJSON(needs.Set-repos.outputs.repos) }}
     env:
       WORKSPACE: ${{ github.workspace }}
+
       builddate: "${{ needs.Set-repos.outputs.builddate }}"
 
       KERNEL_NAME: ${{ matrix.repos.kernelSource.name }}
-      KERNEL_REPO: ${{ matrix.repos.kernelSource.repo }}
-      KERNEL_BRANCH: ${{ matrix.repos.kernelSource.branch }}
+      KERNEL_REPO: ${{ github.event.inputs.KERNEL_REPO || matrix.repos.kernelSource.repo }}
+      KERNEL_BRANCH: ${{ github.event.inputs.KERNEL_BRANCH || matrix.repos.kernelSource.branch }}
       KERNEL_DEVICE: ${{ matrix.repos.kernelSource.device }}
 
       DEFCONFIG_NAME: ${{ matrix.repos.kernelSource.defconfig }}
 
       withKernelSU: ${{ matrix.repos.kernelSU.withKernelSU }}
       kernelSUFork: ${{ matrix.repos.kernelSU.kernelSUFork }}
-      kernelSUCustomUrl: ${{ matrix.repos.kernelSU.customUrl }}
+      kernelSUCustomUrl: ${{ github.event.inputs.KSU_CUSTOM_URL || matrix.repos.kernelSU.customUrl }}
       ccache: ${{ matrix.repos.ccache }}
       useAnykernel: ${{ matrix.repos.AnyKernel3.use }}
       release: ${{ matrix.repos.AnyKernel3.release }}
-      
-      # Build settings tambahan
-      HOST_BUILDER: ${{ matrix.repos.buildSettings.hostBuilder }}
-      LOCALVERSION: ${{ matrix.repos.buildSettings.localversion }}
+
+      TOOLCHAIN_URL_OVERRIDE: ${{ github.event.inputs.TOOLCHAIN_URL }}
     steps:
       - name: "Install prerequisites"
         run: |
@@ -190,26 +107,39 @@ jobs:
           ANYKERNEL_REPO=$(echo $params | jq -r ".repo")
           ANYKERNEL_BRANCH=$(echo $params | jq -r ".branch")
           git clone --recursive --depth=1 -j $(nproc) --branch $ANYKERNEL_BRANCH $ANYKERNEL_REPO AnyKernel3
+
           echo "Setup Anykernel3 => ($ANYKERNEL_REPO)"
 
       - name: "Clone kernel source => (${{ env.KERNEL_REPO }})"
         run: |
           git clone --recursive --depth=1 -j $(nproc) --branch $KERNEL_BRANCH $KERNEL_REPO $KERNEL_NAME
+
           echo "Clone kernel source => ($KERNEL_REPO)"
 
       - name: "Get toolchains"
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
+          # Override URL toolchain pertama jika input diberikan
+          if [ -n "${{ env.TOOLCHAIN_URL_OVERRIDE }}" ]; then
+            toolchains=$(echo "$toolchains" | jq --arg url "${{ env.TOOLCHAIN_URL_OVERRIDE }}" '.[0].url = $url')
+          fi
+
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo "There is $toolchains_num defined toolchains."
           for ((i=0;i<toolchains_num;i++)); do
             toolchain_name=$(echo $toolchains | jq -r ".[$i].name")
+            # Github
             toolchain_repo=$(echo $toolchains | jq -r ".[$i].repo")
             toolchain_branch=$(echo $toolchains | jq -r ".[$i].branch")
+            # From archive
             toolchain_url=$(echo $toolchains | jq -r ".[$i].url")
             
-            if [ -n "${toolchain_url:-}" ] && [ "$toolchain_url" != "null" ]; then
+            echo $toolchain_url
+            if [ -z "${toolchain_url:-}" ] || [ "$toolchain_url" = "null" ];  then
+              git clone --recursive --depth=1 -j $(nproc) --branch $toolchain_branch $toolchain_repo $toolchain_name
+              echo "Clone $toolchain_name => ($toolchain_repo)"
+            else
               wget "$toolchain_url"
               filename="${toolchain_url##*/}"
               mkdir -p $toolchain_name
@@ -231,12 +161,6 @@ jobs:
                   ;;
               esac
               rm $filename
-            elif [ -n "${toolchain_repo:-}" ] && [ "$toolchain_repo" != "null" ]; then
-              git clone --recursive --depth=1 -j $(nproc) --branch $toolchain_branch $toolchain_repo $toolchain_name
-              echo "Clone $toolchain_name => ($toolchain_repo)"
-            else
-              echo "No valid toolchain source for $toolchain_name"
-              exit 1
             fi
 
             jq -r ".[$i].binPath[] | tostring" <<< "$toolchains" | while read -r bin_path; do
@@ -263,9 +187,11 @@ jobs:
             args="$args ARCH=$ARCH"
           fi
           if [ -n "$CC" ]; then
+
             if [[ "$CC" == *"/"* ]]; then
               CC=${{ env.WORKSPACE }}/$CC
             fi
+
             if [ ${{ env.ccache }} = true ]; then
               args="$args CC=\"ccache $CC\""
             else
@@ -287,8 +213,6 @@ jobs:
 
       - name: "Update KernelSU"
         working-directory: ${{ env.KERNEL_NAME }}
-        env:
-          arch: ${{ steps.generate-args.outputs.ARCH }}
         if: ${{ env.withKernelSU == 'true' }}
         run: |
           if [ -d "./KernelSU" ]; then
@@ -322,17 +246,6 @@ jobs:
             esac
           fi
 
-          # Tidak ada kprobes
-
-      - name: "Export build host and localversion"
-        run: |
-          if [ -n "${{ env.HOST_BUILDER }}" ]; then
-            echo "KBUILD_BUILD_HOST=${{ env.HOST_BUILDER }}" >> $GITHUB_ENV
-          fi
-          if [ -n "${{ env.LOCALVERSION }}" ]; then
-            echo "LOCALVERSION=${{ env.LOCALVERSION }}" >> $GITHUB_ENV
-          fi
-
       - name: "Make defconfig"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
@@ -340,8 +253,6 @@ jobs:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         run: |
           echo "PATH Variable: $PATH"
-          echo "KBUILD_BUILD_HOST=${KBUILD_BUILD_HOST}"
-          echo "LOCALVERSION=${LOCALVERSION}"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
       - name: "Build kernel"
