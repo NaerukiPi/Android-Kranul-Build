@@ -1,4 +1,4 @@
-name: "Build kernels beta 3"
+name: "Build kernels beta 2"
 
 env:
   OUT_DIR: "${{ github.workspace }}/out"
@@ -254,7 +254,7 @@ jobs:
             esac
           fi
 
-      - name: "Make defconfig"
+      - name: "Make defconfig and verify KSU options"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
@@ -262,6 +262,24 @@ jobs:
         run: |
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
+          
+          # Selaraskan semua dependensi dan opsi baru (CONFIG_KSU_MANUAL_HOOK, dll.)
+          make ${{ env.args }} olddefconfig
+          
+          # Verifikasi bahwa opsi KSU sudah benar
+          echo "=== Verifikasi konfigurasi KSU ==="
+          grep -E "CONFIG_KSU|CONFIG_KPROBES" .config || echo "PERINGATAN: Opsi KSU tidak ditemukan!"
+          
+          # Pastikan CONFIG_KSU=y dan KPROBES tidak aktif
+          if grep -q "CONFIG_KSU=y" .config; then
+            echo "CONFIG_KSU=y OK"
+          else
+            echo "ERROR: CONFIG_KSU tidak aktif!"
+          fi
+          
+          if grep -q "CONFIG_KSU_MANUAL_HOOK=y" .config; then
+            echo "CONFIG_KSU_MANUAL_HOOK=y OK (hookless)"
+          fi
 
       - name: "Build kernel"
         working-directory: ${{ env.KERNEL_NAME }}
