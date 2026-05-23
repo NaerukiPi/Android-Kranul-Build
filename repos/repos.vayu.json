@@ -1,0 +1,38 @@
+[
+  {
+    "kernelSource": {
+      "name": "caf_kernel",
+      "repo": "https://github.com/NaerukiPi/android_kernel_xiaomi",
+      "branch": "caf",
+      "device": "vayu",
+      "defconfig": "vayu_defconfig"
+    },
+    "kernelSU": {
+      "withKernelSU": true,
+      "kernelSUFork": "KernelSU",
+      "customUrl": "https://raw.githubusercontent.com/backslashxx/KernelSU/master/kernel/setup.sh"
+    },
+    "ccache": true,
+    "toolchains": [
+      {
+        "name": "clang",
+        "url": "https://github.com/XSans0/WeebX-Clang/releases/download/WeebX-Clang-19.1.5-release/WeebX-Clang-19.1.5.tar.gz",
+        "binPath": ["bin"]
+      }
+    ],
+    "params": {
+  "ARCH": "arm64",
+  "CC": "clang",
+  "externalCommand": {
+    "CLANG_TRIPLE": "aarch64-linux-gnu-",
+    "CROSS_COMPILE": "aarch64-linux-gnu-"
+   }
+ }
+    "AnyKernel3": {
+      "use": true,
+      "release": true,
+      "repo": "https://github.com/NaerukiPi/AnyKernel3",
+      "branch": "master"
+    }
+  }
+]
