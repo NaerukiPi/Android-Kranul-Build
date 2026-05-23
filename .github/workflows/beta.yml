@@ -5,6 +5,23 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      KERNEL_REPO:
+        description: 'URL repo kernel (kosongkan untuk default dari repos.json)'
+        required: false
+        default: ''
+      KERNEL_BRANCH:
+        description: 'Branch kernel (kosongkan untuk default)'
+        required: false
+        default: ''
+      TOOLCHAIN_URL:
+        description: 'URL toolchain (kosongkan untuk default)'
+        required: false
+        default: ''
+      KSU_CUSTOM_URL:
+        description: 'URL custom KernelSU (kosongkan untuk default)'
+        required: false
+        default: ''
 
 jobs:
   Set-repos:
@@ -15,7 +32,7 @@ jobs:
       builddate: ${{ steps.generate-builddate.outputs.builddate }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: "Generate Matrix"
         id: generate-matrix
@@ -43,18 +60,21 @@ jobs:
       builddate: "${{ needs.Set-repos.outputs.builddate }}"
 
       KERNEL_NAME: ${{ matrix.repos.kernelSource.name }}
-      KERNEL_REPO: ${{ matrix.repos.kernelSource.repo }}
-      KERNEL_BRANCH: ${{ matrix.repos.kernelSource.branch }}
+      KERNEL_REPO: ${{ github.event.inputs.KERNEL_REPO || matrix.repos.kernelSource.repo }}
+      KERNEL_BRANCH: ${{ github.event.inputs.KERNEL_BRANCH || matrix.repos.kernelSource.branch }}
       KERNEL_DEVICE: ${{ matrix.repos.kernelSource.device }}
 
       DEFCONFIG_NAME: ${{ matrix.repos.kernelSource.defconfig }}
 
       withKernelSU: ${{ matrix.repos.kernelSU.withKernelSU }}
       kernelSUFork: ${{ matrix.repos.kernelSU.kernelSUFork }}
-      kernelSUCustomUrl: ${{ matrix.repos.kernelSU.customUrl }}
+      kernelSUCustomUrl: ${{ github.event.inputs.KSU_CUSTOM_URL || matrix.repos.kernelSU.customUrl }}
+
       ccache: ${{ matrix.repos.ccache }}
       useAnykernel: ${{ matrix.repos.AnyKernel3.use }}
       release: ${{ matrix.repos.AnyKernel3.release }}
+
+      TOOLCHAIN_URL_OVERRIDE: ${{ github.event.inputs.TOOLCHAIN_URL }}
     steps:
       - name: "Install prerequisites"
         run: |
@@ -93,14 +113,28 @@ jobs:
 
       - name: "Clone kernel source => (${{ env.KERNEL_REPO }})"
         run: |
-          git clone --recursive --depth=1 -j $(nproc) --branch $KERNEL_BRANCH $KERNEL_REPO $KERNEL_NAME
-
+          git clone --recursive --depth=100 -j $(nproc) --branch $KERNEL_BRANCH $KERNEL_REPO $KERNEL_NAME
           echo "Clone kernel source => ($KERNEL_REPO)"
+
+      - name: "Generate changelog"
+        working-directory: ${{ env.KERNEL_NAME }}
+        run: |
+          git log --since="2 days ago" --pretty=format:"- %h %s (%an)" > ${{ env.WORKSPACE }}/changelog.txt
+          if [ ! -s ${{ env.WORKSPACE }}/changelog.txt ]; then
+            echo "No changes in the last 2 days." > ${{ env.WORKSPACE }}/changelog.txt
+          fi
+          echo "Changelog:"
+          cat ${{ env.WORKSPACE }}/changelog.txt
 
       - name: "Get toolchains"
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
+          # Override URL toolchain jika input diberikan
+          if [ -n "${{ env.TOOLCHAIN_URL_OVERRIDE }}" ]; then
+            toolchains=$(echo "$toolchains" | jq --arg url "${{ env.TOOLCHAIN_URL_OVERRIDE }}" '.[0].url = $url')
+          fi
+
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo "There is $toolchains_num defined toolchains."
           for ((i=0;i<toolchains_num;i++)); do
@@ -128,6 +162,12 @@ jobs:
                   ;;
                 *.tar.gz)
                   tar zxvf "$filename" -C $toolchain_name
+                  ;;
+                *.tar.xz)
+                  tar xJf "$filename" -C $toolchain_name
+                  ;;
+                *.tar.bz2)
+                  tar xjf "$filename" -C $toolchain_name
                   ;;
                 *.rar)
                   unrar x "$filename" $toolchain_name
@@ -248,7 +288,7 @@ jobs:
           make ${{ env.args }}
 
       - name: "Upload Image"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -258,7 +298,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload Image.gz"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -268,7 +308,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload dtb"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -278,7 +318,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload dtbo.img"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -312,7 +352,7 @@ jobs:
           zip -q -r "${{ env.anykernel }}.zip" *
 
       - name: "Upload AnyKernel3 image => (${{ env.builddate }})"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: ${{ env.useAnykernel == 'true' }}
         with:
           name: "${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}"
@@ -325,4 +365,5 @@ jobs:
         with:
           tag_name: v${{ env.builddate }}.${{ github.run_number }}
           files: "${{ env.WORKSPACE }}/${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}.zip"
-          generate_release_notes: true
+          body_path: ${{ env.WORKSPACE }}/changelog.txt
+          generate_release_notes: false
