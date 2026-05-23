@@ -250,14 +250,18 @@ jobs:
       - name: "Make defconfig with GCC (to generate .config)"
         working-directory: ${{ env.KERNEL_NAME }}
         run: |
-          make O=${{ env.OUT_DIR }} ARCH=arm64 CC=/usr/bin/gcc HOSTCC=/usr/bin/gcc -j$(nproc) ${{ env.DEFCONFIG_NAME }}
+          make O=${{ env.OUT_DIR }} ARCH=arm64 \
+               CROSS_COMPILE=aarch64-linux-gnu- \
+               HOSTCC=/usr/bin/gcc \
+               -j$(nproc) ${{ env.DEFCONFIG_NAME }}
 
-      - name: "Prebuild scripts with GCC"
+      - name: "Prebuild scripts with ARM64 GCC"
         working-directory: ${{ env.KERNEL_NAME }}
         run: |
-          echo "Prebuilding scripts with GCC..."
+          echo "Prebuilding scripts with ARM64 GCC cross-compiler..."
           make O=${{ env.OUT_DIR }} ARCH=arm64 \
-               CC=/usr/bin/gcc HOSTCC=/usr/bin/gcc \
+               CROSS_COMPILE=aarch64-linux-gnu- \
+               HOSTCC=/usr/bin/gcc \
                CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
                CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
                -j$(nproc) scripts
