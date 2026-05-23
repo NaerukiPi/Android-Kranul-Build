@@ -120,6 +120,7 @@ jobs:
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
+          # Override URL toolchain jika input diberikan
           if [ -n "${{ env.TOOLCHAIN_URL_OVERRIDE }}" ]; then
             toolchains=$(echo "$toolchains" | jq --arg url "${{ env.TOOLCHAIN_URL_OVERRIDE }}" '.[0].url = $url')
           fi
@@ -250,6 +251,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
+          export HOSTCC=gcc HOSTCXX=g++
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
@@ -258,6 +260,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
+          export HOSTCC=gcc HOSTCXX=g++
           echo "PATH Variable: $PATH"
           make ${{ env.args }}
 
