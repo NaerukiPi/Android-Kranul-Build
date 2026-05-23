@@ -14,6 +14,10 @@ on:
         description: 'Branch kernel (kosongkan untuk default)'
         required: false
         default: ''
+      KERNEL_FOLDER:
+        description: 'Nama folder kernel (kosongkan untuk default)'
+        required: false
+        default: ''
       TOOLCHAIN_URL:
         description: 'URL toolchain (kosongkan untuk default)'
         required: false
@@ -59,7 +63,7 @@ jobs:
 
       builddate: "${{ needs.Set-repos.outputs.builddate }}"
 
-      KERNEL_NAME: ${{ matrix.repos.kernelSource.name }}
+      KERNEL_NAME: ${{ github.event.inputs.KERNEL_FOLDER || matrix.repos.kernelSource.name }}
       KERNEL_REPO: ${{ github.event.inputs.KERNEL_REPO || matrix.repos.kernelSource.repo }}
       KERNEL_BRANCH: ${{ github.event.inputs.KERNEL_BRANCH || matrix.repos.kernelSource.branch }}
       KERNEL_DEVICE: ${{ matrix.repos.kernelSource.device }}
@@ -252,6 +256,7 @@ jobs:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
+          export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
@@ -261,6 +266,7 @@ jobs:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
+          export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
           make ${{ env.args }}
 
