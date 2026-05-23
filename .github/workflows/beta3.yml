@@ -1,4 +1,4 @@
-name: "Build kernels beta 2"
+name: "Build kernels beta 3"
 
 env:
   OUT_DIR: "${{ github.workspace }}/out"
@@ -12,6 +12,10 @@ on:
         default: ''
       KERNEL_BRANCH:
         description: 'Branch kernel (kosongkan untuk default)'
+        required: false
+        default: ''
+      DEFCONFIG_NAME:
+        description: 'Nama defconfig (kosongkan untuk default dari repos.json)'
         required: false
         default: ''
       TOOLCHAIN_URL:
@@ -64,7 +68,7 @@ jobs:
       KERNEL_BRANCH: ${{ github.event.inputs.KERNEL_BRANCH || matrix.repos.kernelSource.branch }}
       KERNEL_DEVICE: ${{ matrix.repos.kernelSource.device }}
 
-      DEFCONFIG_NAME: ${{ matrix.repos.kernelSource.defconfig }}
+      DEFCONFIG_NAME: ${{ github.event.inputs.DEFCONFIG_NAME || matrix.repos.kernelSource.defconfig }}
 
       withKernelSU: ${{ matrix.repos.kernelSU.withKernelSU }}
       kernelSUFork: ${{ matrix.repos.kernelSU.kernelSUFork }}
