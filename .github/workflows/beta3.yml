@@ -14,6 +14,10 @@ on:
         description: 'Branch kernel (kosongkan untuk default)'
         required: false
         default: ''
+      KERNEL_FOLDER:
+        description: 'Nama folder kernel (kosongkan untuk default dari repos.json)'
+        required: false
+        default: ''
       DEFCONFIG_NAME:
         description: 'Nama defconfig (kosongkan untuk default dari repos.json)'
         required: false
@@ -63,7 +67,7 @@ jobs:
 
       builddate: "${{ needs.Set-repos.outputs.builddate }}"
 
-      KERNEL_NAME: ${{ matrix.repos.kernelSource.name }}
+      KERNEL_NAME: ${{ github.event.inputs.KERNEL_FOLDER || matrix.repos.kernelSource.name }}
       KERNEL_REPO: ${{ github.event.inputs.KERNEL_REPO || matrix.repos.kernelSource.repo }}
       KERNEL_BRANCH: ${{ github.event.inputs.KERNEL_BRANCH || matrix.repos.kernelSource.branch }}
       KERNEL_DEVICE: ${{ matrix.repos.kernelSource.device }}
