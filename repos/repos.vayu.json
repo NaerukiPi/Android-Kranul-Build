@@ -1,9 +1,9 @@
 [
   {
     "kernelSource": {
-      "name": "caf_kernel",
-      "repo": "https://github.com/NaerukiPi/android_kernel_xiaomi",
-      "branch": "caf",
+      "name": "sunny_gore",
+      "repo": "https://github.com/NaerukiPi/SunnyGORevamp",
+      "branch": "13",
       "device": "vayu",
       "defconfig": "vayu_defconfig"
     },
