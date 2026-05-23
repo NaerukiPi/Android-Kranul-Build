@@ -247,15 +247,18 @@ jobs:
             esac
           fi
 
+      - name: "Prebuild scripts with GCC (fix regalloc error)"
+        working-directory: ${{ env.KERNEL_NAME }}
+        run: |
+          echo "Prebuilding scripts with GCC..."
+          make O=${{ env.OUT_DIR }} ARCH=arm64 CC=/usr/bin/gcc -j$(nproc) scripts
+
       - name: "Make defconfig"
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          # Hapus flag Clang yang bermasalah
-          export KCFLAGS="${KCFLAGS//-ftrivial-auto-var-init=zero/}"
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
-          export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
           make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
 
@@ -264,9 +267,7 @@ jobs:
         env:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
-          export KCFLAGS="${KCFLAGS//-ftrivial-auto-var-init=zero/}"
           export HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++
-          export CFLAGS="-mllvm -regalloc-enable-priority-advisor=0"
           echo "PATH Variable: $PATH"
           make ${{ env.args }}
 
