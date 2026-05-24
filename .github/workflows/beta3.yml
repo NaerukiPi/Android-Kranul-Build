@@ -15,7 +15,7 @@ jobs:
       builddate: ${{ steps.generate-builddate.outputs.builddate }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: "Generate Matrix"
         id: generate-matrix
@@ -51,6 +51,7 @@ jobs:
 
       withKernelSU: ${{ matrix.repos.kernelSU.withKernelSU }}
       kernelSUFork: ${{ matrix.repos.kernelSU.kernelSUFork }}
+      KERNELSU_CUSTOM_URL: ${{ matrix.repos.kernelSU.customUrl }}
       ccache: ${{ matrix.repos.ccache }}
       useAnykernel: ${{ matrix.repos.AnyKernel3.use }}
       release: ${{ matrix.repos.AnyKernel3.release }}
@@ -71,7 +72,7 @@ jobs:
 
       - name: "Cache ccache files"
         if: ${{ env.ccache == 'true' }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.ccache
@@ -190,34 +191,51 @@ jobs:
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
+          kernelSUFork: ${{ env.kernelSUFork }}
+          KERNELSU_CUSTOM_URL: ${{ env.KERNELSU_CUSTOM_URL }}
         if: ${{ env.withKernelSU == 'true' }}
         run: |
-          if [ -d "./KernelSU" ]; then
-            rm -rf "./KernelSU"
-          fi
-          if [ -d "./drivers/kernelsu" ]; then
-            rm -rf "./drivers/kernelsu"
+          # Thoroughly remove any existing KernelSU instances
+          echo "Cleaning all possible KernelSU directories..."
+          rm -rf ./KernelSU
+          rm -rf ./drivers/kernelsu
+          rm -rf ./drivers/staging/kernelsu
+          rm -rf ./drivers/kernelsu_next
+          rm -rf ./drivers/staging/kernelsu_next
+          # Additional safety: remove any kprobes leftover config entries
+          find . -name "Makefile" -path "*/kernelsu*" -exec rm -f {} \;
+          find . -name "Kconfig" -path "*/kernelsu*" -exec rm -f {} \;
+
+          if [ -n "$KERNELSU_CUSTOM_URL" ]; then
+            echo "Installing KernelSU from custom URL: $KERNELSU_CUSTOM_URL"
+            curl -LSs "$KERNELSU_CUSTOM_URL" | bash -
+          else
+            case "$kernelSUFork" in
+            "KernelSU")
+              echo "Installing KernelSU..."
+              curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+            ;;
+            "KernelSU-Next")
+              echo "Installing KernelSU Next..."
+              curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
+            ;;
+            "KernelSU-Next-SuSFS")
+              echo "Installing KernelSU Next with SuSFS..."
+              curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next-susfs/kernel/setup.sh" | bash -s next-susfs
+            ;;
+            *)
+              echo "Installing default KernelSU version..."
+              curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+            ;;
+            esac
           fi
 
-          case "${{ env.kernelSUFork }}" in
-          "KernelSU")
-            echo "Installing KernelSU..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
-          ;;
-          "KernelSU-Next")
-            echo "Installing KernelSU Next..."
-            curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
-          ;;
-          "KernelSU-Next-SuSFS")
-            echo "Installing KernelSU Next with SuSFS..."
-            curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next-susfs/kernel/setup.sh" | bash -s next-susfs
-          ;;
-          *)
-            echo "Installing default KernelSU version..."
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-          ;;
-          esac
-
+          # Verify that no stale duplicate directories exist
+          echo "Checking for duplicate KernelSU installations..."
+          if [ -d "./drivers/kernelsu" ] && [ -d "./drivers/staging/kernelsu" ]; then
+            echo "ERROR: Both drivers/kernelsu and drivers/staging/kernelsu exist. Removing staging..."
+            rm -rf ./drivers/staging/kernelsu
+          fi
           cat arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
 
       - name: "Make defconfig"
@@ -238,7 +256,7 @@ jobs:
           make ${{ env.args }}
 
       - name: "Upload Image"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -248,7 +266,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload Image.gz"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -258,7 +276,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload dtb"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -268,7 +286,7 @@ jobs:
           retention-days: 7
 
       - name: "Upload dtbo.img"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -302,7 +320,7 @@ jobs:
           zip -q -r "${{ env.anykernel }}.zip" *
 
       - name: "Upload AnyKernel3 image => (${{ env.builddate }})"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ env.useAnykernel == 'true' }}
         with:
           name: "${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}"
@@ -310,7 +328,7 @@ jobs:
 
       - name: "Create GitHub Release => (${{ env.builddate }})"
         continue-on-error: true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: ${{ env.useAnykernel == 'true' && env.release == 'true' }}
         with:
           tag_name: v${{ env.builddate }}.${{ github.run_number }}
