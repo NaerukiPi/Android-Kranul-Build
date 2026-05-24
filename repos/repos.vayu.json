@@ -2,8 +2,8 @@
   {
     "kernelSource": {
       "name": "aln_kernel",
-      "repo": "testing",
-      "branch": "13",
+      "repo": "https://github.com/NaerukiPi/kernel_xiaomi_vayu/",
+      "branch": "testing",
       "device": "vayu",
       "defconfig": "vayu_defconfig"
     },
