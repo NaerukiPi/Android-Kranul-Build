@@ -1,8 +1,8 @@
 [
   {
     "kernelSource": {
-      "name": "sunny_gore",
-      "repo": "https://github.com/NaerukiPi/SunnyGORevamp",
+      "name": "aln_kernel",
+      "repo": "testing",
       "branch": "13",
       "device": "vayu",
       "defconfig": "vayu_defconfig"
