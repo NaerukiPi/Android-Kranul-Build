@@ -1,9 +1,9 @@
 [
   {
     "kernelSource": {
-      "name": "aln_kernel",
-      "repo": "https://github.com/NaerukiPi/kernel_xiaomi_vayu/",
-      "branch": "testing",
+      "name": "arrow_kernel",
+      "repo": "https://github.com/NaerukiPi/android_kernel_xiaomi_vayu",
+      "branch": "13.1-staging",
       "device": "vayu",
       "defconfig": "vayu_defconfig"
     },
