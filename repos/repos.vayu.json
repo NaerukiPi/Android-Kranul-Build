@@ -1,9 +1,9 @@
 [
   {
     "kernelSource": {
-      "name": "kyrielight_kernel",
-      "repo": "https://github.com/NaerukiPi/kernel_vayu_xiaomi",
-      "branch": "main",
+      "name": "anymore_kernel",
+      "repo": "https://github.com/NaerukiPi/android_kernel_vayu",
+      "branch": "16",
       "device": "vayu",
       "defconfig": "vayu_defconfig"
     },
